@@ -259,6 +259,29 @@ async function seedProducts() {
   }
 }
 
+async function seedStaticProducts() {
+  await mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+  console.log('Connected to MongoDB');
+
+  for (const prod of staticProducts) {
+    await Product.updateOne(
+      { title: prod.title },
+      {
+        $setOnInsert: {
+          ...prod,
+          stock: 50,
+          isActive: true,
+        },
+      },
+      { upsert: true }
+    );
+  }
+  console.log('Static products seeded!');
+  await mongoose.disconnect();
+}
 
 // Main seeding function
 async function seedDatabase() {
