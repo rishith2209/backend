@@ -66,6 +66,7 @@ app.use(cors({
       'http://localhost:5001',
       'http://127.0.0.1:5002',
       'http://localhost:5002',
+      'https://rishith2209.github.io',
       'https://bacend-6rm4.onrender.com', // Your Render domain
       'https://*.onrender.com' // Allow all Render subdomains
     ];
@@ -186,4 +187,5 @@ const startServer = async () => {
 };
 
 console.log('🚀 Starting Crochet ArtY Backend...');
+
 startServer(); 
