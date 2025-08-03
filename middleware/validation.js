@@ -97,6 +97,14 @@ const validateProductId = [
   handleValidationErrors
 ];
 
+// Product ID parameter validation for cart routes
+const validateCartProductId = [
+  param('productId')
+    .isMongoId()
+    .withMessage('Invalid product ID'),
+  handleValidationErrors
+];
+
 // User ID parameter validation
 const validateUserId = [
   param('id')
@@ -167,6 +175,7 @@ module.exports = {
   validateProduct,
   validateCartItem,
   validateProductId,
+  validateCartProductId,
   validateUserId,
   validateSearchQuery,
   validateProfileUpdate

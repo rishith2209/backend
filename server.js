@@ -16,38 +16,67 @@ const wishlistRoutes = require('./routes/wishlist');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Add global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
 // Security middleware
 app.use(helmet());
 
 // Rate limiting - exclude health check endpoint
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (increased from 100)
   skip: (req) => {
     // Skip rate limiting for health check endpoint
     return req.path === '/api/health';
-  }
+  },
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
-// CORS configuration - Updated for Live Server
+// CORS configuration - Updated for production and development
 app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:5500', 
-    'http://localhost:5500',
-    'http://127.0.0.1:8000',
-    'http://localhost:8000',
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://127.0.0.1:5000',
-    'http://localhost:5000',
-    'http://127.0.0.1:5001',
-    'http://localhost:5001',
-    'http://127.0.0.1:5002',
-    'http://localhost:5002',
-    'null' // Allow local file:// origin
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000', 
+      'http://127.0.0.1:5500', 
+      'http://localhost:5500',
+      'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'http://127.0.0.1:8080',
+      'http://localhost:8080',
+      'http://127.0.0.1:5000',
+      'http://localhost:5000',
+      'http://127.0.0.1:5001',
+      'http://localhost:5001',
+      'http://127.0.0.1:5002',
+      'http://localhost:5002',
+      'https://bacend-6rm4.onrender.com', // Your Render domain
+      'https://*.onrender.com' // Allow all Render subdomains
+    ];
+    
+    // Check if origin is allowed
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('onrender.com')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -68,6 +97,27 @@ app.use('/api/artisan', artisanRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to Crochet ArtY API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      products: '/api/products',
+      cart: '/api/cart',
+      artisan: '/api/artisan',
+      orders: '/api/orders',
+      reviews: '/api/reviews',
+      wishlist: '/api/wishlist'
+    },
+    documentation: 'All endpoints are prefixed with /api/',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -99,7 +149,9 @@ app.use((err, req, res, next) => {
 // Start server on fixed port 5000
 const startServer = async () => {
   try {
+    console.log('🔄 Starting server initialization...');
     await connectDB();
+    console.log('✅ Database connected successfully');
     
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
@@ -118,10 +170,20 @@ const startServer = async () => {
       }
     });
     
+    // Keep the process alive
+    process.on('SIGINT', () => {
+      console.log('🛑 Received SIGINT, shutting down gracefully...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+    
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
   }
 };
 
+console.log('🚀 Starting Crochet ArtY Backend...');
 startServer(); 
